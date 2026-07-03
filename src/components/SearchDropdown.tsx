@@ -11,30 +11,26 @@ export default function SearchDropdown() {
   const [results, setResults] = useState<AnimeSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Debounce search
-  useEffect(() => {
-    const timer = setTimeout(async () => {
-      if (query.length > 2) {
-        try {
-          setLoading(true);
-          const searchResults = await searchAnime(query);
-          setResults(searchResults);
-        } catch (error) {
-          console.error("Search error:", error);
-          setResults([]);
-        } finally {
-          setLoading(false);
-        }
-      } else {
+  const performSearch = async () => {
+    if (query.length > 2) {
+      try {
+        setLoading(true);
+        setHasSearched(true);
+        setIsOpen(true);
+        const searchResults = await searchAnime(query);
+        setResults(searchResults);
+      } catch (error) {
+        console.error("Search error:", error);
         setResults([]);
+      } finally {
+        setLoading(false);
       }
-    }, 450);
-
-    return () => clearTimeout(timer);
-  }, [query]);
+    }
+  };
 
   // Close dropdown on escape key
   useEffect(() => {
@@ -66,14 +62,16 @@ export default function SearchDropdown() {
   }, []);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && query.length > 2) {
-      window.location.href = `/search?q=${encodeURIComponent(query)}`;
+    if (e.key === "Enter") {
+      e.preventDefault();
+      performSearch();
     }
   };
 
   const clearSearch = () => {
     setQuery("");
     setResults([]);
+    setHasSearched(false);
     setIsOpen(false);
     inputRef.current?.focus();
   };
@@ -88,13 +86,21 @@ export default function SearchDropdown() {
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
-            setIsOpen(true);
+            setHasSearched(false);
+            setResults([]);
           }}
           onFocus={() => setIsOpen(true)}
           onKeyDown={handleKeyDown}
-          className="w-full text-sm bg-slate-900/60 border border-slate-700/50 rounded-full pl-10 pr-10 py-1.5 text-slate-200 placeholder-slate-400 focus:outline-none focus:border-purple-500 transition-all"
+          className="w-full text-sm bg-slate-900/60 border border-slate-700/50 rounded-full pl-10 pr-20 py-1.5 text-slate-200 placeholder-slate-400 focus:outline-none focus:border-purple-500 transition-all"
         />
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+        <button
+          onClick={performSearch}
+          disabled={query.length <= 2}
+          className="absolute right-8 top-1/2 -translate-y-1/2 text-purple-400 hover:text-purple-300 disabled:text-slate-500 disabled:cursor-not-allowed transition-colors"
+        >
+          <Search className="w-4 h-4" />
+        </button>
         {query && (
           <button
             onClick={clearSearch}
@@ -106,7 +112,7 @@ export default function SearchDropdown() {
       </div>
 
       {/* Search Results Dropdown */}
-      {isOpen && query.length > 2 && (
+      {isOpen && hasSearched && query.length > 2 && (
         <div
           ref={dropdownRef}
           className="absolute top-full left-0 right-0 mt-2 bg-gray-900/95 backdrop-blur-sm rounded-xl border border-gray-800 shadow-2xl overflow-hidden z-50"

@@ -14,8 +14,18 @@ import {
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { useState, useEffect } from "react";
 
+function getAnimeUniqueId(anime: AnimeInfo): string {
+  return anime.catalogId || anime.malId || anime.id;
+}
+
 function deduplicateAnime(animeArray: AnimeInfo[]): AnimeInfo[] {
-  return Array.from(new Map(animeArray.map((item) => [item.id, item])).values());
+  const seen = new Set<string>();
+  return animeArray.filter((anime) => {
+    const id = getAnimeUniqueId(anime);
+    if (seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
 }
 
 function filterActiveAnime(animeArray: AnimeInfo[]): AnimeInfo[] {
@@ -39,16 +49,49 @@ export default function Home() {
         setRecentlyAdded(recentData);
 
         const trendingData = await fetchTrendingAnime();
-        setTrending(filterActiveAnime(deduplicateAnime(trendingData)));
-
         const popularData = await fetchPopularAnime();
-        setPopular(filterActiveAnime(deduplicateAnime(popularData)));
-
         const upcomingData = await fetchUpcomingAnime();
-        setUpcoming(deduplicateAnime(upcomingData));
-
         const moviesData = await fetchTopMovies();
-        setMovies(filterActiveAnime(deduplicateAnime(moviesData)));
+
+        // Deduplicate across all sections using catalogId when available, otherwise malId
+        const allAnime = [...trendingData, ...popularData, ...upcomingData, ...moviesData];
+        const uniqueAnimeMap = new Map<string, AnimeInfo>();
+
+        allAnime.forEach((anime) => {
+          const key = anime.catalogId || anime.malId || anime.id;
+          if (!uniqueAnimeMap.has(key)) {
+            uniqueAnimeMap.set(key, anime);
+          }
+        });
+
+        const uniqueAnime = Array.from(uniqueAnimeMap.values());
+
+        // Separate back into categories, keeping only those that belong to each
+        const trendingIds = new Set(trendingData.map(a => a.catalogId || a.malId || a.id));
+        const popularIds = new Set(popularData.map(a => a.catalogId || a.malId || a.id));
+        const upcomingIds = new Set(upcomingData.map(a => a.catalogId || a.malId || a.id));
+        const moviesIds = new Set(moviesData.map(a => a.catalogId || a.malId || a.id));
+
+        const filteredTrending = uniqueAnime.filter(a => trendingIds.has(a.catalogId || a.malId || a.id));
+        const filteredPopular = uniqueAnime.filter(a => popularIds.has(a.catalogId || a.malId || a.id));
+        const filteredUpcoming = uniqueAnime.filter(a => upcomingIds.has(a.catalogId || a.malId || a.id));
+        const filteredMovies = uniqueAnime.filter(a => moviesIds.has(a.catalogId || a.malId || a.id));
+
+        // Deduplicate within each section to ensure no duplicates
+        const dedupeSection = (animeArray: AnimeInfo[]) => {
+          const seen = new Set<string>();
+          return animeArray.filter(a => {
+            const key = a.catalogId || a.malId || a.id;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          });
+        };
+
+        setTrending(filterActiveAnime(dedupeSection(filteredTrending)));
+        setPopular(filterActiveAnime(dedupeSection(filteredPopular)));
+        setUpcoming(dedupeSection(filteredUpcoming));
+        setMovies(filterActiveAnime(dedupeSection(filteredMovies)));
       } catch (error) {
         console.error("Error fetching anime data:", error);
       } finally {
@@ -127,7 +170,7 @@ export default function Home() {
       <main className="container mx-auto px-4 py-12">
         {recentlyAdded.length > 0 && (
           <AnimeCarousel
-            animes={recentlyAdded}
+            animes={deduplicateAnime(recentlyAdded)}
             title="Recently Added"
             sectionName="recent"
             viewAllLink="/recent"
@@ -135,7 +178,7 @@ export default function Home() {
         )}
         {trending.length > 0 && (
           <AnimeCarousel
-            animes={trending}
+            animes={deduplicateAnime(trending)}
             title="Trending Now"
             sectionName="trending"
             viewAllLink="/search?q=airing"
@@ -143,7 +186,7 @@ export default function Home() {
         )}
         {popular.length > 0 && (
           <AnimeCarousel
-            animes={popular}
+            animes={deduplicateAnime(popular)}
             title="Most Popular of All Time"
             sectionName="popular"
             viewAllLink="/search?q=popular"
@@ -151,7 +194,7 @@ export default function Home() {
         )}
         {upcoming.length > 0 && (
           <AnimeCarousel
-            animes={upcoming}
+            animes={deduplicateAnime(upcoming)}
             title="Top Upcoming Anticipated Shows"
             sectionName="upcoming"
             viewAllLink="/search?q=upcoming"
@@ -159,7 +202,7 @@ export default function Home() {
         )}
         {movies.length > 0 && (
           <AnimeCarousel
-            animes={movies}
+            animes={deduplicateAnime(movies)}
             title="Top Anime Movies"
             sectionName="movies"
             viewAllLink="/search?q=movie"

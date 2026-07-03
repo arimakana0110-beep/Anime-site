@@ -15,9 +15,10 @@ export default function AnimeGrid({ animes, title, sectionName = "default" }: An
         {title}
       </h2>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
-        {animes.map((anime) => (
-          <AnimeCard key={`${anime.id}-${sectionName}`} anime={anime} />
-        ))}
+        {animes.map((anime, index) => {
+          const uniqueKey = anime.catalogId || anime.malId || anime.id;
+          return <AnimeCard key={`${sectionName}-${uniqueKey}-${index}`} anime={anime} />;
+        })}
       </div>
     </section>
   );

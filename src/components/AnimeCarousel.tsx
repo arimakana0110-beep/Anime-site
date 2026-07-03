@@ -39,14 +39,17 @@ export default function AnimeCarousel({ animes, title, loading, sectionName = "d
         </div>
       ) : (
         <div className="flex gap-5 overflow-x-auto pb-4 scrollbar-none snap-x snap-mandatory scroll-smooth">
-          {animes.map((anime) => (
-            <div
-              key={`${anime.id}-${sectionName}`}
-              className="flex-shrink-0 w-[140px] sm:w-[160px] md:w-[180px] lg:w-[200px] snap-start"
-            >
-              <AnimeCard anime={anime} />
-            </div>
-          ))}
+          {animes.map((anime, index) => {
+            const uniqueKey = anime.catalogId || anime.malId || anime.id;
+            return (
+              <div
+                key={`${sectionName}-${uniqueKey}-${index}`}
+                className="flex-shrink-0 w-[140px] sm:w-[160px] md:w-[180px] lg:w-[200px] snap-start"
+              >
+                <AnimeCard anime={anime} />
+              </div>
+            );
+          })}
         </div>
       )}
     </section>

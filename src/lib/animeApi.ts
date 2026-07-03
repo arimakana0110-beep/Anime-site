@@ -205,7 +205,8 @@ function mapAnikotoToAnimeInfo(
   episodes: AnikotoEpisode[] = []
 ): AnimeInfo {
   const catalogId = String(anime.id);
-  const episodeCount = parseInt(anime.episodes || "0", 10) || episodes.length;
+  // Prioritize actual available episodes over official total count
+  const episodeCount = episodes.length > 0 ? episodes.length : parseInt(anime.episodes || "0", 10);
   const mappedEpisodes =
     episodes.length > 0
       ? episodes.map((ep) => mapAnikotoEpisode(ep, catalogId))
@@ -251,6 +252,54 @@ function mapJikanListItem(anime: JikanAnime): AnimeInfo {
   return mapJikanToAnimeInfo(anime);
 }
 
+// Cache for Anikoto data to avoid repeated API calls
+let anikotoCache: Map<string, AnikotoRecentAnime> | null = null;
+let anikotoCacheTime: number = 0;
+const ANIKOTO_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+async function getAnikotoCache(): Promise<Map<string, AnikotoRecentAnime>> {
+  const now = Date.now();
+  if (anikotoCache && (now - anikotoCacheTime) < ANIKOTO_CACHE_DURATION) {
+    return anikotoCache;
+  }
+
+  try {
+    const data = await anikotoFetch<AnikotoRecentResponse>(`/recent-anime?page=1&per_page=200`);
+    if (data.ok && data.data) {
+      anikotoCache = new Map(data.data.map(anime => [anime.mal_id || String(anime.id), anime]));
+      anikotoCacheTime = now;
+      return anikotoCache;
+    }
+  } catch (error) {
+    console.error("Error fetching Anikoto cache:", error);
+  }
+
+  return new Map();
+}
+
+async function enrichWithAnikotoData(anime: AnimeInfo, malId: string): Promise<AnimeInfo> {
+  const cache = await getAnikotoCache();
+  const anikotoMatch = cache.get(malId);
+
+  if (anikotoMatch) {
+    const anikotoInfo = mapAnikotoToAnimeInfo(anikotoMatch);
+    // Use Anikoto title and data, keep other metadata from Jikan
+    return {
+      ...anime,
+      id: anikotoInfo.id, // Use catalogId so it routes to Anikoto data
+      title: anikotoInfo.title, // Use Anikoto title
+      image: anikotoInfo.image || anime.image, // Prefer Anikoto image
+      cover: anikotoInfo.cover || anime.cover,
+      catalogId: anikotoInfo.catalogId,
+      malId: malId,
+      episodes: anikotoInfo.episodes, // Use Anikoto episodes
+      episodeCount: anikotoInfo.episodeCount, // Use Anikoto episode count
+    };
+  }
+
+  return anime;
+}
+
 function generateEpisodesFromCount(count: number, animeId: string): AnimeEpisode[] {
   if (!count || count <= 0) return [];
 
@@ -284,9 +333,25 @@ export async function fetchRecentlyAddedAnime(limit = 24): Promise<AnimeInfo[]> 
 
     if (!data.ok || !data.data) return [];
 
-    return data.data
-      .filter((anime) => anime.poster && anime.title)
-      .map((anime) => mapAnikotoToAnimeInfo(anime));
+    const filteredAnime = data.data.filter((anime) => anime.poster && anime.title);
+
+    // Fetch actual episode data for each anime to get available episodes count
+    const animeWithEpisodes = await Promise.all(
+      filteredAnime.map(async (anime) => {
+        try {
+          const seriesData = await anikotoFetch<AnikotoSeriesResponse>(`/series/${anime.id}`);
+          if (seriesData.ok && seriesData.data) {
+            return mapAnikotoToAnimeInfo(anime, seriesData.data.episodes);
+          }
+        } catch (error) {
+          console.error(`Error fetching episodes for ${anime.title}:`, error);
+        }
+        // Fallback to basic mapping if series fetch fails
+        return mapAnikotoToAnimeInfo(anime);
+      })
+    );
+
+    return animeWithEpisodes;
   } catch (error) {
     console.error("Error fetching recently added anime:", error);
     return [];
@@ -299,7 +364,12 @@ export async function fetchTrendingAnime(): Promise<AnimeInfo[]> {
     const filteredData = (data.data || []).filter(
       (anime) => anime.type !== "ONA" && anime.type !== "ona"
     );
-    return filteredData.map(mapJikanListItem);
+    const mappedData = filteredData.map(mapJikanListItem);
+    // Enrich with Anikoto titles
+    const enrichedData = await Promise.all(
+      mappedData.map(anime => enrichWithAnikotoData(anime, anime.malId || anime.id))
+    );
+    return enrichedData;
   } catch (error) {
     console.error("Error fetching trending anime:", error);
     return [];
@@ -311,7 +381,12 @@ export async function fetchPopularAnime(): Promise<AnimeInfo[]> {
     const data = await jikanFetch<{ data: JikanAnime[] }>(
       "/top/anime?filter=bypopularity&limit=25"
     );
-    return (data.data || []).map(mapJikanListItem);
+    const mappedData = (data.data || []).map(mapJikanListItem);
+    // Enrich with Anikoto titles
+    const enrichedData = await Promise.all(
+      mappedData.map(anime => enrichWithAnikotoData(anime, anime.malId || anime.id))
+    );
+    return enrichedData;
   } catch (error) {
     console.error("Error fetching popular anime:", error);
     return [];
@@ -323,7 +398,12 @@ export async function fetchUpcomingAnime(): Promise<AnimeInfo[]> {
     const data = await jikanFetch<{ data: JikanAnime[] }>(
       "/top/anime?filter=upcoming&limit=25"
     );
-    return (data.data || []).map(mapJikanListItem);
+    const mappedData = (data.data || []).map(mapJikanListItem);
+    // Enrich with Anikoto titles
+    const enrichedData = await Promise.all(
+      mappedData.map(anime => enrichWithAnikotoData(anime, anime.malId || anime.id))
+    );
+    return enrichedData;
   } catch (error) {
     console.error("Error fetching upcoming anime:", error);
     return [];
@@ -335,7 +415,12 @@ export async function fetchTopMovies(): Promise<AnimeInfo[]> {
     const data = await jikanFetch<{ data: JikanAnime[] }>(
       "/top/anime?type=movie&limit=25"
     );
-    return (data.data || []).map(mapJikanListItem);
+    const mappedData = (data.data || []).map(mapJikanListItem);
+    // Enrich with Anikoto titles
+    const enrichedData = await Promise.all(
+      mappedData.map(anime => enrichWithAnikotoData(anime, anime.malId || anime.id))
+    );
+    return enrichedData;
   } catch (error) {
     console.error("Error fetching top movies:", error);
     return [];
@@ -347,7 +432,7 @@ export async function searchAnime(query: string): Promise<AnimeSearchResult[]> {
     const data = await jikanFetch<{ data: JikanAnime[] }>(
       `/anime?q=${encodeURIComponent(query)}&limit=25`
     );
-    return (data.data || []).map((anime) => ({
+    const mappedData = (data.data || []).map((anime) => ({
       id: String(anime.mal_id),
       title: anime.title_english || anime.title,
       image: anime.images?.jpg?.image_url || "",
@@ -355,6 +440,23 @@ export async function searchAnime(query: string): Promise<AnimeSearchResult[]> {
       type: anime.type,
       score: anime.score ?? undefined,
     }));
+
+    // Enrich with Anikoto titles and use catalogId when available
+    const cache = await getAnikotoCache();
+    const enrichedData = mappedData.map((anime) => {
+      const anikotoMatch = cache.get(anime.id);
+      if (anikotoMatch) {
+        return {
+          ...anime,
+          id: `c-${anikotoMatch.id}`, // Use catalogId so it routes to Anikoto data
+          title: anikotoMatch.title, // Use Anikoto title
+          image: anikotoMatch.poster || anime.image, // Prefer Anikoto image
+        };
+      }
+      return anime;
+    });
+
+    return enrichedData;
   } catch (error) {
     console.error("Error searching anime:", error);
     return [];

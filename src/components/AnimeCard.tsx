@@ -46,7 +46,15 @@ export default function AnimeCard({ anime }: AnimeCardProps) {
             {anime.title}
           </h3>
           <p className="text-gray-400 text-xs mt-1">
-            {anime.episodeCount ?? anime.episodes.length ?? 0} Episodes
+            {(() => {
+              // Fallback chain for episode display
+              const displayEpisodes =
+                anime.episodeCount ??
+                (anime.episodes?.length > 0 ? anime.episodes.length : undefined) ??
+                (anime.isRecentlyAdded ? 1 : 0);
+
+              return `${displayEpisodes} ${displayEpisodes === 1 ? 'Episode' : 'Episodes'}`;
+            })()}
           </p>
         </div>
       </div>
