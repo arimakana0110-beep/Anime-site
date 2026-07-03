@@ -132,7 +132,7 @@ export default async function AnimeDetailsPage({
       {/* Footer */}
       <footer className="bg-gray-900 border-t border-gray-800 py-8 mt-12">
         <div className="container mx-auto px-4 text-center text-gray-400">
-          <p>&copy; 2024 AniStream. All rights reserved.</p>
+          <p>&copy; 2026 AniStream. All rights reserved.</p>
         </div>
       </footer>
     </div>

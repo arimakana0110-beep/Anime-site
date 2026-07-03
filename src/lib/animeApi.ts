@@ -44,6 +44,7 @@ export interface Server {
 interface JikanAnime {
   mal_id: number;
   title: string;
+  title_english?: string;
   synopsis?: string;
   score?: number | null;
   images?: {
@@ -106,7 +107,7 @@ function mapJikanToAnimeInfo(anime: JikanAnime, episodes: AnimeEpisode[] = []): 
 
   return {
     id: String(anime.mal_id),
-    title: anime.title,
+    title: anime.title_english || anime.title,
     description: anime.synopsis || "",
     genres: (anime.genres || []).map((g) => g.name),
     rating: anime.score ?? undefined,
@@ -191,7 +192,7 @@ export async function searchAnime(query: string): Promise<AnimeSearchResult[]> {
     );
     return (data.data || []).map((anime) => ({
       id: String(anime.mal_id),
-      title: anime.title,
+      title: anime.title_english || anime.title,
       image: anime.images?.jpg?.image_url || "",
       releaseDate: anime.aired?.from?.split("T")[0],
       type: anime.type,
