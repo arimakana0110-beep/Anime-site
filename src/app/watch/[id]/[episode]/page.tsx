@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Play, ChevronLeft, ChevronRight } from "lucide-react";
-import { fetchAnimeInfo, fetchEpisodeServers, AnimeInfo, AnimeEpisode } from "@/lib/animeApi";
+import { fetchAnimeInfo, AnimeInfo, AnimeEpisode, isCatalogId } from "@/lib/animeApi";
 import VideoPlayer from "@/components/VideoPlayer";
 import EpisodeList from "@/components/EpisodeList";
 import ServerSwitcher from "@/components/ServerSwitcher";
@@ -51,17 +51,36 @@ export default function WatchPage() {
         setAnime(animeData);
         setCurrentEpisode(episode);
 
-        const serverList = await fetchEpisodeServers(
-          animeId,
-          episodeNumber,
-          animeData.trailerUrl
-        );
+        const params = new URLSearchParams({
+          episode: String(episodeNumber),
+        });
+
+        if (animeData.malId) params.set("malId", animeData.malId);
+        else if (!isCatalogId(animeId)) params.set("malId", animeId);
+
+        if (episode.episodeEmbedId) params.set("episodeEmbedId", episode.episodeEmbedId);
+        if (episode.embedUrls?.sub) params.set("embedSub", episode.embedUrls.sub);
+        if (episode.embedUrls?.dub) params.set("embedDub", episode.embedUrls.dub);
+        if (animeData.trailerUrl) params.set("trailerUrl", animeData.trailerUrl);
+
+        const serversResponse = await fetch(`/api/stream/servers?${params.toString()}`);
+        if (!serversResponse.ok) {
+          throw new Error("Failed to load stream servers");
+        }
+
+        const { servers: serverList } = (await serversResponse.json()) as {
+          servers: { name: string; url: string }[];
+        };
         const serversObj: { [key: string]: string } = {};
         serverList.forEach((server) => {
           serversObj[server.name] = server.url;
         });
         setServers(serversObj);
-        setCurrentServerUrl(serverList[0].url);
+        if (serverList.length > 0) {
+          setCurrentServerUrl(serverList[0].url);
+        } else {
+          setError("No video servers available for this episode.");
+        }
       } catch (err) {
         console.error("Error loading episode:", err);
         setError("Failed to load episode data");

@@ -11,6 +11,11 @@ export default function AnimeCard({ anime }: AnimeCardProps) {
     <Link href={`/anime/${anime.id}`}>
       <div className="group relative bg-gray-900 rounded-xl overflow-hidden shadow-md hover:shadow-2xl transition-all duration-300 cursor-pointer">
         <div className="relative aspect-[2/3] overflow-hidden">
+          {anime.isRecentlyAdded && (
+            <span className="absolute top-2 left-2 z-10 bg-emerald-600 text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wide">
+              New
+            </span>
+          )}
           <img
             src={anime.image}
             alt={anime.title}

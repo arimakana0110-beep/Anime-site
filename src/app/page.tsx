@@ -3,21 +3,27 @@
 import Link from "next/link";
 import { Play, Star } from "lucide-react";
 import AnimeCarousel from "@/components/AnimeCarousel";
-import { fetchTrendingAnime, fetchPopularAnime, fetchUpcomingAnime, fetchTopMovies, AnimeInfo } from "@/lib/animeApi";
+import {
+  fetchRecentlyAddedAnime,
+  fetchTrendingAnime,
+  fetchPopularAnime,
+  fetchUpcomingAnime,
+  fetchTopMovies,
+  AnimeInfo,
+} from "@/lib/animeApi";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { useState, useEffect } from "react";
 
-// Helper function to deduplicate anime by ID
 function deduplicateAnime(animeArray: AnimeInfo[]): AnimeInfo[] {
-  return Array.from(new Map(animeArray.map(item => [item.id, item])).values());
+  return Array.from(new Map(animeArray.map((item) => [item.id, item])).values());
 }
 
-// Helper function to filter out anime with 0 episodes (for active categories)
 function filterActiveAnime(animeArray: AnimeInfo[]): AnimeInfo[] {
-  return animeArray.filter(anime => anime.episodes && anime.episodes.length > 0);
+  return animeArray.filter((anime) => (anime.episodeCount ?? anime.episodes.length) > 0);
 }
 
 export default function Home() {
+  const [recentlyAdded, setRecentlyAdded] = useState<AnimeInfo[]>([]);
   const [trending, setTrending] = useState<AnimeInfo[]>([]);
   const [popular, setPopular] = useState<AnimeInfo[]>([]);
   const [upcoming, setUpcoming] = useState<AnimeInfo[]>([]);
@@ -28,18 +34,23 @@ export default function Home() {
     async function loadData() {
       try {
         setLoading(true);
-        const [trendingData, popularData, upcomingData, moviesData] = await Promise.all([
-          fetchTrendingAnime(),
-          fetchPopularAnime(),
-          fetchUpcomingAnime(),
-          fetchTopMovies(),
-        ]);
+
+        const recentData = await fetchRecentlyAddedAnime(24);
+        setRecentlyAdded(recentData);
+
+        const trendingData = await fetchTrendingAnime();
         setTrending(filterActiveAnime(deduplicateAnime(trendingData)));
+
+        const popularData = await fetchPopularAnime();
         setPopular(filterActiveAnime(deduplicateAnime(popularData)));
-        setUpcoming(deduplicateAnime(upcomingData)); // Upcoming exempt from 0-episode filter
+
+        const upcomingData = await fetchUpcomingAnime();
+        setUpcoming(deduplicateAnime(upcomingData));
+
+        const moviesData = await fetchTopMovies();
         setMovies(filterActiveAnime(deduplicateAnime(moviesData)));
       } catch (error) {
-        console.error('Error fetching anime data:', error);
+        console.error("Error fetching anime data:", error);
       } finally {
         setLoading(false);
       }
@@ -48,7 +59,7 @@ export default function Home() {
     loadData();
   }, []);
 
-  const featuredAnime = trending[0];
+  const featuredAnime = recentlyAdded[0] || trending[0];
 
   if (loading) {
     return (
@@ -63,7 +74,6 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-950 to-black pt-16">
-      {/* Hero Section */}
       {featuredAnime && (
         <section className="relative h-[70vh] overflow-hidden">
           <div className="absolute inset-0">
@@ -77,11 +87,11 @@ export default function Home() {
           </div>
           <div className="relative container mx-auto px-4 h-full flex items-center">
             <div className="max-w-2xl">
-              <div className="flex items-center gap-2 mb-4">
-                <span className="bg-purple-600 text-white text-sm font-semibold px-3 py-1 rounded-full">
-                  TRENDING NOW
+              <div className="flex items-center gap-2 mb-4 flex-wrap">
+                <span className="bg-emerald-600 text-white text-sm font-semibold px-3 py-1 rounded-full">
+                  {featuredAnime.isRecentlyAdded ? "JUST ADDED" : "TRENDING NOW"}
                 </span>
-                {featuredAnime.rating && (
+                {featuredAnime.rating && featuredAnime.rating > 0 && (
                   <div className="flex items-center gap-1 text-yellow-400">
                     <Star className="w-5 h-5 fill-yellow-400" />
                     <span className="font-semibold">{featuredAnime.rating}</span>
@@ -94,9 +104,9 @@ export default function Home() {
               <p className="text-gray-300 text-lg mb-6 line-clamp-3">
                 {featuredAnime.description}
               </p>
-              <div className="flex gap-4">
+              <div className="flex gap-4 flex-wrap">
                 <Link
-                  href={`/anime/${featuredAnime.id}`}
+                  href={`/watch/${featuredAnime.id}/1`}
                   className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-lg font-semibold transition-colors"
                 >
                   <Play className="w-5 h-5 fill-white ml-0.5" />
@@ -114,23 +124,49 @@ export default function Home() {
         </section>
       )}
 
-      {/* Main Content */}
       <main className="container mx-auto px-4 py-12">
+        {recentlyAdded.length > 0 && (
+          <AnimeCarousel
+            animes={recentlyAdded}
+            title="Recently Added"
+            sectionName="recent"
+            viewAllLink="/recent"
+          />
+        )}
         {trending.length > 0 && (
-          <AnimeCarousel animes={trending} title="Trending Now" sectionName="trending" viewAllLink="/search?q=airing" />
+          <AnimeCarousel
+            animes={trending}
+            title="Trending Now"
+            sectionName="trending"
+            viewAllLink="/search?q=airing"
+          />
         )}
         {popular.length > 0 && (
-          <AnimeCarousel animes={popular} title="Most Popular of All Time" sectionName="popular" viewAllLink="/search?q=popular" />
+          <AnimeCarousel
+            animes={popular}
+            title="Most Popular of All Time"
+            sectionName="popular"
+            viewAllLink="/search?q=popular"
+          />
         )}
         {upcoming.length > 0 && (
-          <AnimeCarousel animes={upcoming} title="Top Upcoming Anticipated Shows" sectionName="upcoming" viewAllLink="/search?q=upcoming" />
+          <AnimeCarousel
+            animes={upcoming}
+            title="Top Upcoming Anticipated Shows"
+            sectionName="upcoming"
+            viewAllLink="/search?q=upcoming"
+          />
         )}
         {movies.length > 0 && (
-          <AnimeCarousel animes={movies} title="Top Anime Movies" sectionName="movies" viewAllLink="/search?q=movie" />
+          <AnimeCarousel
+            animes={movies}
+            title="Top Anime Movies"
+            sectionName="movies"
+            viewAllLink="/search?q=movie"
+          />
         )}
       </main>
 
-      {/* Footer */}
       <footer className="bg-gray-900 border-t border-gray-800 py-8">
         <div className="container mx-auto px-4 text-center text-gray-400">
           <p>&copy; 2026 AniStream. All rights reserved.</p>
