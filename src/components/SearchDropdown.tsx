@@ -115,7 +115,7 @@ export default function SearchDropdown() {
       {isOpen && hasSearched && query.length > 2 && (
         <div
           ref={dropdownRef}
-          className="absolute top-full left-0 right-0 mt-2 bg-gray-900/95 backdrop-blur-sm rounded-xl border border-gray-800 shadow-2xl overflow-hidden z-50"
+          className="fixed left-4 right-4 top-16 md:absolute md:left-auto md:right-0 md:top-full md:w-96 w-[calc(100vw-2rem)] mt-2 bg-slate-900/95 backdrop-blur-md shadow-2xl border border-slate-800/80 rounded-2xl overflow-hidden z-50"
         >
           {loading ? (
             <div className="p-8 text-center">
@@ -136,12 +136,12 @@ export default function SearchDropdown() {
                       setIsOpen(false);
                       setQuery("");
                     }}
-                    className="flex items-center gap-4 p-3 rounded-lg hover:bg-gray-800/50 transition-colors group"
+                    className="flex items-center gap-4 p-3 hover:bg-slate-850/50 rounded-xl transition-all group"
                   >
                     <img
                       src={anime.image}
                       alt={anime.title}
-                      className="w-16 h-24 object-cover rounded shadow-lg group-hover:scale-105 transition-transform"
+                      className="w-12 h-16 rounded-lg object-cover flex-shrink-0 group-hover:scale-105 transition-transform"
                     />
                     <div className="flex-1 min-w-0">
                       <h3 className="text-white font-semibold truncate group-hover:text-purple-400 transition-colors">

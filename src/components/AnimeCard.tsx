@@ -9,7 +9,7 @@ interface AnimeCardProps {
 export default function AnimeCard({ anime }: AnimeCardProps) {
   return (
     <Link href={`/anime/${anime.id}`}>
-      <div className="group relative bg-gray-900 rounded-xl overflow-hidden shadow-md hover:shadow-2xl transition-all duration-300 cursor-pointer">
+      <div className="group relative bg-gray-900 rounded-xl overflow-hidden shadow-md hover:shadow-2xl transition-all duration-300 cursor-pointer w-[110px] sm:w-[140px] md:w-[160px] lg:w-[180px] flex-shrink-0">
         <div className="relative aspect-[2/3] overflow-hidden">
           {anime.isRecentlyAdded && (
             <span className="absolute top-2 left-2 z-10 bg-emerald-600 text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wide">
@@ -42,10 +42,10 @@ export default function AnimeCard({ anime }: AnimeCardProps) {
           </div>
         </div>
         <div className="p-3">
-          <h3 className="text-white font-semibold text-sm truncate group-hover:text-purple-400 transition-colors">
+          <h3 className="text-white font-semibold text-xs sm:text-sm line-clamp-2 mt-2 text-slate-200 group-hover:text-purple-400 transition-colors">
             {anime.title}
           </h3>
-          <p className="text-gray-400 text-xs mt-1">
+          <p className="text-gray-400 text-[10px] sm:text-xs mt-0.5">
             {(() => {
               // Fallback chain for episode display
               const displayEpisodes =

@@ -29,22 +29,22 @@ export default function AnimeCarousel({ animes, title, loading, sectionName = "d
       </div>
       
       {loading ? (
-        <div className="flex gap-5 overflow-x-auto pb-4 scrollbar-none snap-x snap-mandatory scroll-smooth">
+        <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-4 scrollbar-none snap-x snap-mandatory scroll-smooth px-4 sm:px-0">
           {Array.from({ length: 6 }).map((_, i) => (
             <div
               key={`${sectionName}-skeleton-${i}`}
-              className="flex-shrink-0 w-[140px] sm:w-[160px] md:w-[180px] lg:w-[200px] aspect-[2/3] bg-gray-800 rounded-xl animate-pulse snap-start"
+              className="flex-shrink-0 w-[110px] sm:w-[140px] md:w-[160px] lg:w-[180px] aspect-[2/3] bg-gray-800 rounded-xl animate-pulse snap-start"
             />
           ))}
         </div>
       ) : (
-        <div className="flex gap-5 overflow-x-auto pb-4 scrollbar-none snap-x snap-mandatory scroll-smooth">
+        <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-4 scrollbar-none snap-x snap-mandatory scroll-smooth px-4 sm:px-0">
           {animes.map((anime, index) => {
             const uniqueKey = anime.catalogId || anime.malId || anime.id;
             return (
               <div
                 key={`${sectionName}-${uniqueKey}-${index}`}
-                className="flex-shrink-0 w-[140px] sm:w-[160px] md:w-[180px] lg:w-[200px] snap-start"
+                className="flex-shrink-0 snap-start"
               >
                 <AnimeCard anime={anime} />
               </div>

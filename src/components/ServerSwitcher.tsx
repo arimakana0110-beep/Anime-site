@@ -22,26 +22,33 @@ export default function ServerSwitcher({ servers, onServerChange }: ServerSwitch
     onServerChange(serverUrl);
   };
 
+  const serverEntries = Object.entries(servers);
+
   return (
     <div className="bg-gray-900/80 backdrop-blur-sm rounded-xl p-4 border border-gray-800">
-      <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
+      <h3 className="text-white font-semibold mb-3 flex items-center gap-2 text-sm">
         <span className="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></span>
         Server Switcher
       </h3>
-      <div className="flex flex-wrap gap-2">
-        {Object.entries(servers).map(([serverName, serverUrl]) => (
-          <button
-            key={serverName}
-            onClick={() => handleServerClick(serverName, serverUrl)}
-            className={`px-4 py-2 rounded-lg font-medium transition-all ${
-              activeServer === serverName
-                ? "bg-purple-600 text-white shadow-[0_0_15px_rgba(147,51,234,0.5)] border-2 border-purple-400"
-                : "bg-gray-800 text-gray-300 hover:bg-gray-700 border-2 border-transparent"
-            }`}
-          >
-            {serverName}
-          </button>
-        ))}
+      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 mt-3">
+        {serverEntries.map(([serverName, serverUrl], index) => {
+          const isDub = serverName.toLowerCase().includes('dub');
+          const label = isDub ? `Server ${index + 1} (Dub)` : `Server ${index + 1}`;
+
+          return (
+            <button
+              key={serverName}
+              onClick={() => handleServerClick(serverName, serverUrl)}
+              className={`bg-slate-900/80 border border-slate-800/60 rounded-xl py-2 px-1 text-xs text-slate-300 font-medium tracking-wide transition-all hover:bg-slate-800 text-center truncate ${
+                activeServer === serverName
+                  ? "bg-purple-600 text-white font-bold border-purple-500 shadow-md shadow-purple-900/20"
+                  : ""
+              }`}
+            >
+              {label}
+            </button>
+          );
+        })}
       </div>
     </div>
   );

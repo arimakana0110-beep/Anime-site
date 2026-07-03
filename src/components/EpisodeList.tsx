@@ -12,30 +12,18 @@ export default function EpisodeList({ episodes, animeId, currentEpisode }: Episo
   return (
     <div className="space-y-2">
       <h3 className="text-lg font-semibold text-white mb-4">Episodes</h3>
-      <div className="space-y-2 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
+      <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2 max-h-[320px] overflow-y-auto pr-1 custom-scrollbar">
         {episodes.map((episode) => (
           <Link
             key={episode.episodeId}
             href={`/watch/${animeId}/${episode.episodeNumber}`}
-            className={`flex items-center gap-3 p-3 rounded-lg transition-all ${
+            className={`bg-slate-900/60 border border-slate-800/80 text-xs text-slate-300 font-medium py-3 rounded-xl hover:bg-slate-800/60 text-center transition-all ${
               currentEpisode === episode.episodeNumber
-                ? "bg-purple-600 text-white"
-                : "bg-gray-800/50 hover:bg-gray-700/50 text-gray-300 hover:text-white"
+                ? "bg-purple-600 border-purple-500 text-white font-bold"
+                : ""
             }`}
           >
-            <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                currentEpisode === episode.episodeNumber
-                  ? "bg-purple-500"
-                  : "bg-gray-700"
-              }`}
-            >
-              <Play className="w-4 h-4 fill-current ml-0.5" />
-            </div>
-            <div className="flex-1">
-              <p className="font-medium text-sm">Episode {episode.episodeNumber}</p>
-              <p className="text-xs opacity-70 truncate">{episode.title}</p>
-            </div>
+            {episode.episodeNumber}
           </Link>
         ))}
       </div>

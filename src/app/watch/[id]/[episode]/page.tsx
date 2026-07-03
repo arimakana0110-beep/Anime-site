@@ -165,39 +165,39 @@ export default function WatchPage() {
               </div>
             )}
 
-            <div className="bg-gray-900/80 backdrop-blur-sm rounded-xl p-6 border border-gray-800 mt-6">
-              <h1 className="text-2xl font-bold text-white mb-2">
+            <div className="p-4 bg-slate-900/40 border border-slate-900/80 rounded-2xl mt-6">
+              <h1 className="text-base sm:text-lg font-bold text-slate-100 tracking-tight line-clamp-1">
                 {anime.title} - Episode {episodeNumber}
               </h1>
-              <p className="text-gray-300">{currentEpisode.title}</p>
+              <p className="text-gray-300 text-sm mt-1">{currentEpisode.title}</p>
 
-              <div className="flex gap-4 mt-6">
+              <div className="flex gap-4 mt-4">
                 {previousEpisode ? (
                   <Link
                     href={`/watch/${anime.id}/${previousEpisode.episodeNumber}`}
-                    className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+                    className="text-xs px-4 py-2 rounded-xl bg-slate-850 border border-slate-800 text-slate-300 hover:text-white transition-all font-semibold flex items-center gap-1.5"
                   >
-                    <ChevronLeft className="w-5 h-5" />
+                    <ChevronLeft className="w-4 h-4" />
                     Previous
                   </Link>
                 ) : (
-                  <div className="flex items-center gap-2 bg-gray-800/50 text-gray-500 px-6 py-3 rounded-lg font-semibold cursor-not-allowed">
-                    <ChevronLeft className="w-5 h-5" />
+                  <div className="text-xs px-4 py-2 rounded-xl bg-slate-850/50 border border-slate-800/50 text-slate-500 font-semibold cursor-not-allowed flex items-center gap-1.5">
+                    <ChevronLeft className="w-4 h-4" />
                     Previous
                   </div>
                 )}
                 {nextEpisode ? (
                   <Link
                     href={`/watch/${anime.id}/${nextEpisode.episodeNumber}`}
-                    className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+                    className="text-xs px-4 py-2 rounded-xl bg-purple-600 border border-purple-500 text-white hover:bg-purple-700 transition-all font-semibold flex items-center gap-1.5"
                   >
                     Next
-                    <ChevronRight className="w-5 h-5" />
+                    <ChevronRight className="w-4 h-4" />
                   </Link>
                 ) : (
-                  <div className="flex items-center gap-2 bg-gray-800/50 text-gray-500 px-6 py-3 rounded-lg font-semibold cursor-not-allowed">
+                  <div className="text-xs px-4 py-2 rounded-xl bg-slate-850/50 border border-slate-800/50 text-slate-500 font-semibold cursor-not-allowed flex items-center gap-1.5">
                     Next
-                    <ChevronRight className="w-5 h-5" />
+                    <ChevronRight className="w-4 h-4" />
                   </div>
                 )}
               </div>
