@@ -55,8 +55,16 @@ export default function WatchPage() {
           episode: String(episodeNumber),
         });
 
-        if (animeData.malId) params.set("malId", animeData.malId);
-        else if (!isCatalogId(animeId)) params.set("malId", animeId);
+        const hasCatalogEmbed = Boolean(
+          episode.embedUrls?.sub ||
+            episode.embedUrls?.dub ||
+            episode.episodeEmbedId
+        );
+
+        if (!hasCatalogEmbed) {
+          if (animeData.malId) params.set("malId", animeData.malId);
+          else if (!isCatalogId(animeId)) params.set("malId", animeId);
+        }
 
         if (episode.episodeEmbedId) params.set("episodeEmbedId", episode.episodeEmbedId);
         if (episode.embedUrls?.sub) params.set("embedSub", episode.embedUrls.sub);

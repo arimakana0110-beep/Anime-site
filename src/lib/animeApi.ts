@@ -190,6 +190,22 @@ async function anikotoFetch<T>(endpoint: string): Promise<T> {
   return response.json();
 }
 
+function deduplicateEpisodes(episodes: AnimeEpisode[]): AnimeEpisode[] {
+  const byNumber = new Map<number, AnimeEpisode>();
+
+  for (const episode of episodes) {
+    const existing = byNumber.get(episode.episodeNumber);
+    const episodeHasEmbed = Boolean(episode.embedUrls || episode.episodeEmbedId);
+    const existingHasEmbed = Boolean(existing?.embedUrls || existing?.episodeEmbedId);
+
+    if (!existing || (episodeHasEmbed && !existingHasEmbed)) {
+      byNumber.set(episode.episodeNumber, episode);
+    }
+  }
+
+  return Array.from(byNumber.values()).sort((a, b) => a.episodeNumber - b.episodeNumber);
+}
+
 function mapAnikotoEpisode(ep: AnikotoEpisode, catalogId: string): AnimeEpisode {
   return {
     episodeNumber: ep.number,
@@ -209,7 +225,7 @@ function mapAnikotoToAnimeInfo(
   const episodeCount = episodes.length > 0 ? episodes.length : parseInt(anime.episodes || "0", 10);
   const mappedEpisodes =
     episodes.length > 0
-      ? episodes.map((ep) => mapAnikotoEpisode(ep, catalogId))
+      ? deduplicateEpisodes(episodes.map((ep) => mapAnikotoEpisode(ep, catalogId)))
       : generateEpisodesFromCount(episodeCount, `c-${catalogId}`);
 
   return {
@@ -252,21 +268,40 @@ function mapJikanListItem(anime: JikanAnime): AnimeInfo {
   return mapJikanToAnimeInfo(anime);
 }
 
+interface AnikotoCache {
+  byMalId: Map<string, AnikotoRecentAnime>;
+  byCatalogId: Map<string, AnikotoRecentAnime>;
+}
+
 // Cache for Anikoto data to avoid repeated API calls
-let anikotoCache: Map<string, AnikotoRecentAnime> | null = null;
+let anikotoCache: AnikotoCache | null = null;
 let anikotoCacheTime: number = 0;
 const ANIKOTO_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
-async function getAnikotoCache(): Promise<Map<string, AnikotoRecentAnime>> {
+function buildAnikotoCache(entries: AnikotoRecentAnime[]): AnikotoCache {
+  const byMalId = new Map<string, AnikotoRecentAnime>();
+  const byCatalogId = new Map<string, AnikotoRecentAnime>();
+
+  for (const anime of entries) {
+    byCatalogId.set(String(anime.id), anime);
+    if (anime.mal_id && !byMalId.has(anime.mal_id)) {
+      byMalId.set(anime.mal_id, anime);
+    }
+  }
+
+  return { byMalId, byCatalogId };
+}
+
+async function getAnikotoCache(): Promise<AnikotoCache> {
   const now = Date.now();
-  if (anikotoCache && (now - anikotoCacheTime) < ANIKOTO_CACHE_DURATION) {
+  if (anikotoCache && now - anikotoCacheTime < ANIKOTO_CACHE_DURATION) {
     return anikotoCache;
   }
 
   try {
     const data = await anikotoFetch<AnikotoRecentResponse>(`/recent-anime?page=1&per_page=200`);
     if (data.ok && data.data) {
-      anikotoCache = new Map(data.data.map(anime => [anime.mal_id || String(anime.id), anime]));
+      anikotoCache = buildAnikotoCache(data.data);
       anikotoCacheTime = now;
       return anikotoCache;
     }
@@ -274,26 +309,43 @@ async function getAnikotoCache(): Promise<Map<string, AnikotoRecentAnime>> {
     console.error("Error fetching Anikoto cache:", error);
   }
 
-  return new Map();
+  return { byMalId: new Map(), byCatalogId: new Map() };
+}
+
+export function deduplicateAnimeList(animeList: AnimeInfo[]): AnimeInfo[] {
+  const seen = new Set<string>();
+  return animeList.filter((anime) => {
+    const key = anime.catalogId || anime.malId || anime.id;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+export function getLatestEpisodeNumber(anime: AnimeInfo): number {
+  if (anime.episodes.length === 0) return 1;
+  return Math.max(...anime.episodes.map((episode) => episode.episodeNumber));
+}
+
+export function getWatchEpisodeNumber(anime: AnimeInfo): number {
+  return anime.isRecentlyAdded ? getLatestEpisodeNumber(anime) : anime.episodes[0]?.episodeNumber ?? 1;
 }
 
 async function enrichWithAnikotoData(anime: AnimeInfo, malId: string): Promise<AnimeInfo> {
   const cache = await getAnikotoCache();
-  const anikotoMatch = cache.get(malId);
+  const anikotoMatch = cache.byMalId.get(malId);
 
   if (anikotoMatch) {
-    const anikotoInfo = mapAnikotoToAnimeInfo(anikotoMatch);
-    // Use Anikoto title and data, keep other metadata from Jikan
+    const catalogId = String(anikotoMatch.id);
     return {
       ...anime,
-      id: anikotoInfo.id, // Use catalogId so it routes to Anikoto data
-      title: anikotoInfo.title, // Use Anikoto title
-      image: anikotoInfo.image || anime.image, // Prefer Anikoto image
-      cover: anikotoInfo.cover || anime.cover,
-      catalogId: anikotoInfo.catalogId,
-      malId: malId,
-      episodes: anikotoInfo.episodes, // Use Anikoto episodes
-      episodeCount: anikotoInfo.episodeCount, // Use Anikoto episode count
+      id: `c-${catalogId}`,
+      title: anikotoMatch.title,
+      image: anikotoMatch.poster || anime.image,
+      cover: anikotoMatch.background_image || anikotoMatch.poster || anime.cover,
+      catalogId,
+      malId,
+      isRecentlyAdded: true,
     };
   }
 
@@ -340,18 +392,20 @@ export async function fetchRecentlyAddedAnime(limit = 24): Promise<AnimeInfo[]> 
       filteredAnime.map(async (anime) => {
         try {
           const seriesData = await anikotoFetch<AnikotoSeriesResponse>(`/series/${anime.id}`);
-          if (seriesData.ok && seriesData.data) {
-            return mapAnikotoToAnimeInfo(anime, seriesData.data.episodes);
+          if (seriesData.ok && seriesData.data?.anime) {
+            return mapAnikotoToAnimeInfo(
+              seriesData.data.anime,
+              seriesData.data.episodes || []
+            );
           }
         } catch (error) {
           console.error(`Error fetching episodes for ${anime.title}:`, error);
         }
-        // Fallback to basic mapping if series fetch fails
         return mapAnikotoToAnimeInfo(anime);
       })
     );
 
-    return animeWithEpisodes;
+    return deduplicateAnimeList(animeWithEpisodes);
   } catch (error) {
     console.error("Error fetching recently added anime:", error);
     return [];
@@ -444,19 +498,19 @@ export async function searchAnime(query: string): Promise<AnimeSearchResult[]> {
     // Enrich with Anikoto titles and use catalogId when available
     const cache = await getAnikotoCache();
     const enrichedData = mappedData.map((anime) => {
-      const anikotoMatch = cache.get(anime.id);
+      const anikotoMatch = cache.byMalId.get(anime.id);
       if (anikotoMatch) {
         return {
           ...anime,
-          id: `c-${anikotoMatch.id}`, // Use catalogId so it routes to Anikoto data
-          title: anikotoMatch.title, // Use Anikoto title
-          image: anikotoMatch.poster || anime.image, // Prefer Anikoto image
+          id: `c-${anikotoMatch.id}`,
+          title: anikotoMatch.title,
+          image: anikotoMatch.poster || anime.image,
         };
       }
       return anime;
     });
 
-    return enrichedData;
+    return Array.from(new Map(enrichedData.map((item) => [item.id, item])).values());
   } catch (error) {
     console.error("Error searching anime:", error);
     return [];

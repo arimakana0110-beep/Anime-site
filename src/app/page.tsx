@@ -10,22 +10,14 @@ import {
   fetchUpcomingAnime,
   fetchTopMovies,
   AnimeInfo,
+  deduplicateAnimeList,
+  getWatchEpisodeNumber,
 } from "@/lib/animeApi";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { useState, useEffect } from "react";
 
-function getAnimeUniqueId(anime: AnimeInfo): string {
-  return anime.catalogId || anime.malId || anime.id;
-}
-
 function deduplicateAnime(animeArray: AnimeInfo[]): AnimeInfo[] {
-  const seen = new Set<string>();
-  return animeArray.filter((anime) => {
-    const id = getAnimeUniqueId(anime);
-    if (seen.has(id)) return false;
-    seen.add(id);
-    return true;
-  });
+  return deduplicateAnimeList(animeArray);
 }
 
 function filterActiveAnime(animeArray: AnimeInfo[]): AnimeInfo[] {
@@ -149,7 +141,7 @@ export default function Home() {
               </p>
               <div className="flex gap-4 flex-wrap">
                 <Link
-                  href={`/watch/${featuredAnime.id}/1`}
+                  href={`/watch/${featuredAnime.id}/${getWatchEpisodeNumber(featuredAnime)}`}
                   className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-lg font-semibold transition-colors"
                 >
                   <Play className="w-5 h-5 fill-white ml-0.5" />

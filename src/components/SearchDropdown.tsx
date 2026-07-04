@@ -128,9 +128,9 @@ export default function SearchDropdown() {
                 Found {results.length} result{results.length !== 1 ? "s" : ""}
               </p>
               <div className="space-y-2 max-h-96 overflow-y-auto custom-scrollbar">
-                {results.map((anime) => (
+                {results.map((anime, index) => (
                   <Link
-                    key={anime.id}
+                    key={`${anime.id}-${index}`}
                     href={`/anime/${anime.id}`}
                     onClick={() => {
                       setIsOpen(false);

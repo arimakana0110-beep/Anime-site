@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Star, Play, ArrowLeft, Clock } from "lucide-react";
-import { fetchAnimeInfo, AnimeInfo } from "@/lib/animeApi";
+import { fetchAnimeInfo, getWatchEpisodeNumber } from "@/lib/animeApi";
 import { notFound } from "next/navigation";
 import LoadingSpinner from "@/components/LoadingSpinner";
 
@@ -16,7 +16,7 @@ export default async function AnimeDetailsPage({
     notFound();
   }
 
-  const firstEpisode = anime.episodes[0];
+  const watchEpisodeNumber = getWatchEpisodeNumber(anime);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-950 to-black">
@@ -78,13 +78,13 @@ export default async function AnimeDetailsPage({
             ))}
           </div>
           <p className="text-gray-300 leading-relaxed">{anime.description}</p>
-          {firstEpisode && (
+          {watchEpisodeNumber > 0 && (
             <Link
-              href={`/watch/${anime.id}/${firstEpisode.episodeNumber}`}
+              href={`/watch/${anime.id}/${watchEpisodeNumber}`}
               className="flex items-center justify-center gap-2 w-fit bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-lg font-semibold transition-colors"
             >
               <Play className="w-5 h-5 fill-white ml-0.5" />
-              Watch Now
+              {anime.isRecentlyAdded ? "Watch Latest" : "Watch Now"}
             </Link>
           )}
         </div>

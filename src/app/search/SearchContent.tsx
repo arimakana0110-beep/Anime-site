@@ -3,13 +3,13 @@
 import { useSearchParams } from "next/navigation";
 import { Search } from "lucide-react";
 import AnimeGrid from "@/components/AnimeGrid";
-import { searchAnime, AnimeInfo } from "@/lib/animeApi";
+import { searchAnime, AnimeInfo, deduplicateAnimeList } from "@/lib/animeApi";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { useState, useEffect } from "react";
 
 // Helper function to deduplicate anime by ID
 function deduplicateAnime(animeArray: AnimeInfo[]): AnimeInfo[] {
-  return Array.from(new Map(animeArray.map(item => [item.id, item])).values());
+  return deduplicateAnimeList(animeArray);
 }
 
 export default function SearchContent() {
